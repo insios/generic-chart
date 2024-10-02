@@ -1,0 +1,35 @@
+{{/*
+Deployment
+https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/deployment-v1/
+*/}}
+{{- define "generic.resources.deployment" -}}
+
+{{- $deployment := .generic.resource }}
+
+{{/*- $podTemplate := deepCopy $deployment.podTemplate */}}
+{{- $podTemplate := $deployment.podTemplate }}
+{{- include "generic.useTemplates" (dict "resource" $podTemplate "root" $) }}
+{{- $_ := set .generic "podTemplate" $podTemplate }}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "generic.fullResourceName" . }}
+  {{- with $deployment.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "generic.resourceLabels" . | nindent 4 }}
+spec:
+  replicas: {{ $deployment.replicas | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "generic.selectorLabels" . | nindent 6 }}
+  {{- include "generic.resources.inc.podTemplate" . | nindent 2 }}
+  {{- with $deployment.rawSpec }}{{ toYaml . | nindent 2 }}{{ end }}
+
+{{- $_ := unset .generic "podTemplate" }}
+
+{{- end }}

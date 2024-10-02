@@ -1,0 +1,5 @@
+#!/bin/bash
+
+. ./devel/bin/config.sh helm
+
+helm template $HELM_APP $HELM_CHART $HELM_VALUES

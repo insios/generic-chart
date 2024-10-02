@@ -1,0 +1,9 @@
+#!/bin/bash
+
+. ./devel/bin/config.sh helm
+
+echo "Installing to app.$HELM_NS..."
+helm upgrade --install --atomic --cleanup-on-fail \
+    --namespace "$HELM_NS" --create-namespace \
+    $HELM_VALUES \
+    $HELM_APP $HELM_CHART
