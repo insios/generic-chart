@@ -1,0 +1,20 @@
+{{/*
+PodTemplate
+https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-template-v1/
+*/}}
+{{- define "generic.resources.inc.podTemplate" -}}
+
+{{- $podTemplate := .generic.podTemplate -}}
+
+template:
+  metadata:
+    {{- with $podTemplate.annotations }}
+    annotations:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    labels:
+      {{- include "generic.selectorLabels" . | nindent 6 }}
+  spec:
+    {{- with $podTemplate.rawSpec }}{{ toYaml . | nindent 4 }}{{ end }}
+
+{{- end }}

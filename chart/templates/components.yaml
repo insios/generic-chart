@@ -1,0 +1,38 @@
+{{- $_ := set $ "generic" (dict) }}
+
+{{- range $componentName, $component := .Values.components }}
+{{- if or $component.enabled (not (hasKey $component "enabled")) }}
+
+{{- $_ := set $.generic "componentName" $componentName }}
+{{- $_ := set $.generic "component" $component }}
+
+{{- if $component.resources }}
+{{- range $resourceName, $resource := $component.resources }}
+{{- if or $resource.enabled (not (hasKey $resource "enabled")) }}
+
+{{/*- $resource := deepCopy $resource */}}
+{{- if $resource.useTemplates }}
+  {{- range $templateName := reverse $resource.useTemplates }}
+    {{- $resource := merge $resource (deepCopy (get $.Values.templates $templateName)) }}
+  {{- end }}
+{{- end }}
+
+{{- $_ := set $.generic "resourceName" $resourceName }}
+{{- $_ := set $.generic "resource" $resource }}
+
+{{- include (print "generic.resources." $resource.type) $ }}
+
+{{- $_ := unset $.generic "resourceName" }}
+{{- $_ := unset $.generic "resource" }}
+
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- $_ := unset $.generic "componentName" }}
+{{- $_ := unset $.generic "component" }}
+
+{{- end }}
+{{- end }}
+
+{{- $_ := unset $ "generic" }}
