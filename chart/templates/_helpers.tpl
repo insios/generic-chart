@@ -2,21 +2,21 @@
 Create chart name and version as used by the chart label.
 */}}
 {{- define "generic.fullChartName" -}}
-{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+{{- printf "%s-%s" .helm.Chart.Name .helm.Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Expand the name of the app.
 */}}
 {{- define "generic.appName" -}}
-{{- default .Release.Name (.Values.app).name }}
+{{- default .helm.Release.Name (.helm.Values.app).name }}
 {{- end }}
 
 {{/*
 Expand the instance of the app.
 */}}
 {{- define "generic.appInstance" -}}
-{{- default .Release.Name (.Values.app).instance }}
+{{- default .helm.Release.Name (.helm.Values.app).instance }}
 {{- end }}
 
 {{/*
@@ -57,17 +57,17 @@ component.resource: {{ .generic.resourceName }}
 Resource labels
 */}}
 {{- define "generic.resourceLabels" -}}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/managed-by: {{ .helm.Release.Service }}
 helm.sh/chart: {{ include "generic.fullChartName" . }}
 {{ include "generic.selectorLabels" . }}
-{{- if (.Values.app).partOf }}
-app.kubernetes.io/part-of: {{ (.Values.app).partOf }}
+{{- if (.helm.Values.app).partOf }}
+app.kubernetes.io/part-of: {{ (.helm.Values.app).partOf }}
 {{- end }}
-{{- if (.Values.app).version }}
-app.kubernetes.io/version: {{ (.Values.app).version }}
+{{- if (.helm.Values.app).version }}
+app.kubernetes.io/version: {{ (.helm.Values.app).version }}
 {{- end }}
-{{- if (.Values.app).environment }}
-app.environment: {{ (.Values.app).environment }}
+{{- if (.helm.Values.app).environment }}
+app.environment: {{ (.helm.Values.app).environment }}
 {{- end }}
 {{- end }}
 
@@ -77,7 +77,7 @@ Merge templates from "useTemplates"
 {{- define "generic.useTemplates" -}}
 {{- if .resource.useTemplates }}
   {{- range $templateName := reverse .resource.useTemplates }}
-    {{- $_ := merge $.resource (deepCopy (get $.root.Values.templates $templateName)) }}
+    {{- $_ := merge $.resource (deepCopy (get $.helm.Values.templates $templateName)) }}
   {{- end }}
 {{- end }}
 {{- end }}

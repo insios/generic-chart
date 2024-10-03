@@ -9,7 +9,7 @@ https://kubernetes.io/docs/reference/kubernetes-api/
 {{- $labels := default (dict) $metadata.labels }}
 
 {{- if not $metadata.name }}
-{{- $_ := set $metadata "name" (include "generic.fullResourceName" .) }}
+  {{ $_ := set $metadata "name" (include "generic.fullResourceName" .) }}
 {{- end }}
 
 {{- $labels := merge $labels (fromYaml (include "generic.resourceLabels" .)) }}

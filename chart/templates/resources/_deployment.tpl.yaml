@@ -5,11 +5,7 @@ https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/deploymen
 {{- define "generic.resources.deployment" -}}
 
 {{- $deployment := .generic.resource }}
-
-{{/*- $podTemplate := deepCopy $deployment.podTemplate */}}
-{{- $podTemplate := $deployment.podTemplate }}
-{{- include "generic.useTemplates" (dict "resource" $podTemplate "root" $) }}
-{{- $_ := set .generic "podTemplate" $podTemplate }}
+{{- $_ := set .generic "podTemplate" $deployment.podTemplate }}
 
 ---
 apiVersion: apps/v1
@@ -27,7 +23,9 @@ spec:
   selector:
     matchLabels:
       {{- include "generic.selectorLabels" . | nindent 6 }}
+
   {{- include "generic.resources.inc.podTemplate" . | nindent 2 }}
+
   {{- with $deployment.rawSpec }}{{ toYaml . | nindent 2 }}{{ end }}
 
 {{- $_ := unset .generic "podTemplate" }}
