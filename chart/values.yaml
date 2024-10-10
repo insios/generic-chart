@@ -1,0 +1,10 @@
+app:
+  name:
+  version:
+  instance:
+  partOf:
+  environment:
+
+components: {}
+
+snippets: {}

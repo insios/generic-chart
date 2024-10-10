@@ -1,26 +1,34 @@
-{{- range $componentName, $component := .Values.components }}
-{{- if or $component.enabled (not (hasKey $component "enabled")) }}
+{{- $_ := set . "generic" (dict "ctx" (dict) "callStack" (list)) }}
+{{- range $dummyComponentName, $component := .Values.components }}
+  {{/* $component := deepCopy $component */}}
+  {{- $_ := set $.generic.ctx "componentName" $component.componentName }}
+  {{- $_ := set $.generic "callStack" (prepend $.generic.callStack (dict
+    "obj" $component
+  )) }}
+  {{- if and ($component.resources) (not (include "generic.isDisabled" $)) }}
+    {{- range $dummyResourceName, $resource := $component.resources }}
+      {{/* $resource := deepCopy $resource */}}
+      {{- $_ := set $.generic.ctx "resourceName" $resource.resourceName }}
+      {{- $_ := set $.generic "callStack" (prepend $.generic.callStack (dict
+        "obj" $resource
+      )) }}
+      {{- if and (not (include "generic.isDisabled" $)) $resource.manifest }}
+        {{/* $manifest := deepCopy $resource.manifest */}}
+        {{- $manifest := $resource.manifest }}
+        {{- $_ := set $.generic "callStack" (prepend $.generic.callStack (dict
+          "obj" $manifest
+        )) }}
+        {{- include "generic.processKeys" $ }}
 
-{{- if $component.resources }}
-{{- range $resourceName, $resource := $component.resources }}
-{{- if or $resource.enabled (not (hasKey $resource "enabled")) }}
+---
+{{ $manifest | toYaml }}
 
-{{/*- $resource := deepCopy $resource */}}
-{{- include "generic.useTemplates" (dict "helm" $ "resource" $resource) }}
-
-{{- include (print "generic.resources." $resource.type) (dict
-  "helm" $
-  "generic" (dict
-    "componentName" $componentName
-    "component" $component
-    "resourceName" $resourceName
-    "resource" $resource
-  )
-) }}
-
-{{- end }}
-{{- end }}
-{{- end }}
-
-{{- end }}
+        {{- $_ := set $.generic "callStack" (rest $.generic.callStack) }}
+      {{- end }}
+      {{- $_ := unset $.generic.ctx "resourceName" }}
+      {{- $_ := set $.generic "callStack" (rest $.generic.callStack) }}
+    {{- end }}
+  {{- end }}
+  {{- $_ := unset $.generic.ctx "componentName" }}
+  {{- $_ := set $.generic "callStack" (rest $.generic.callStack) }}
 {{- end }}

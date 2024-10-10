@@ -15,5 +15,5 @@ if [ -z "$HELM_APP" ]; then
     HELM_APP="testapp"
 fi
 if [ -z "$HELM_VALUES" ]; then
-    HELM_VALUES="-f ./devel/local/app1/values.yaml"
+    HELM_VALUES="-f ./devel/local/app1/template.generic.yaml -f ./devel/local/app1/values.yaml"
 fi
