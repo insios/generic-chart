@@ -59,15 +59,19 @@ See [https://kubernetes.io/docs/concepts/overview/working-with-objects/common-la
 
 ### Application components and their resources
 
+List of the application components and their resources
+
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | components | object or list | `{}` | List of the application components |
 | components[].componentName | string | `nil` |  |
 | components[].resources | object or list | `{}` | List of the component resources |
 | components[].resources[].resourceName | string | `nil` |  |
-| components[].resources[].manifest | object | `{}` |  |
+| components[].resources[].manifest | object | `{}` | See [reference](https://kubernetes.io/docs/reference/kubernetes-api/) |
 
 ### Snippets
+
+Snippets can be used anywhere within the resource manifest hierarchy.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
@@ -75,12 +79,209 @@ See [https://kubernetes.io/docs/concepts/overview/working-with-objects/common-la
 
 ## Special keys
 
-Coming soon...
+### $disabled
 
-## Available helpers
+It can be placed in the component definition, resource definition, or anywhere within the manifest hierarchy. If evaluated to `true`, the entire object will be excluded from manifest's rendering.
 
-Coming soon...
+Examples:
 
-## Example templates
+```yaml
+# ...
+components:
+  # ...
+  - componentName: 'cron'
+    $disabled: '{{ eq "development" .Values.app.environment }}'
+    resources:
+      # ...
+      - resourceName: 'sendEmails'
+        manifest:
+          apiVersion: batch/v1
+          kind: CronJob
+          # ...
+      # ...
+  # ...
+# ...
+```
+
+```yaml
+# ...
+components:
+  # ...
+  - componentName: 'back'
+    resources:
+      # ...
+      - resourceName: ''
+        $disabled: '{{ not .Values.ingress.enabled }}'
+        manifest:
+          apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          # ...
+      # ...
+  # ...
+# ...
+```
+
+```yaml
+# ...
+components:
+  # ...
+  - componentName: 'back'
+    resources:
+      # ...
+      - resourceName: ''
+        manifest:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            # ...
+          spec:
+            # ...
+            strategy:
+              $disabled: true
+              type: Recreate
+            # ...
+      # ...
+  # ...
+# ...
+```
+
+### $snippets
+
+It can be placed anywhere within the manifest hierarchy. All snippets from this list will be merged into the object before processing any other special keys.
+
+Examples:
+
+```yaml
+# ...
+components:
+  # ...
+  - componentName: 'back'
+    resources:
+      # ...
+      - resourceName: ''
+        manifest:
+          $snippets:
+            - deploymentManifest
+          spec:
+            # ...
+          # ...
+      # ...
+  - componentName: 'front'
+    resources:
+      # ...
+      - resourceName: ''
+        manifest:
+          $snippets: ["deploymentManifest"]
+          spec:
+            # ...
+          # ...
+      # ...
+  # ...
+
+snippets:
+  # ...
+  deploymentManifest:
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      $name: 'fullResourceNameStr'
+      $labels: 'resourceLabelsMap'
+    spec: {}
+  # ...
+```
+
+### $[anyKey] (use helper template)
+
+The full definition of using a helper template looks like:
+
+```yaml
+$anyKey:
+  $disabled: false
+  tplName: 'fullResourceNameStr'
+  tplParam: ['dpl', 'back']
+  dstKey: 'name'
+  valType: 'Str'
+  addEmpty: false
+```
+
+| Key       | Type              | Default | Description |
+|-----------|-------------------|-------------|-------------|
+| $disabled | bool or string    | false |  |
+| tplName   | string            | nil | Helper template name |
+| tplParam  | any               | nil | Helper template parameter (if needed) |
+| dstKey    | string            | key without '$' | Destination key for the value |
+| valType   | string            | end of tplName | Type of a destination key value - `Str`, `Int`, `Flt`, `Bln`, `Map` or `Lst` |
+| addEmpty  | bool              | false | Add, even if the result is empty |
+
+Short notation with parameters:
+
+```yaml
+$anyKey: 'fullResourceNameStr: ["dpl", "back"]'
+```
+
+Short notation without parameters:
+
+```yaml
+$anyKey: 'fullResourceNameStr'
+```
+
+## Available helper templates
+
+### appNameStr
+
+The name of the application: `.Values.app.name`, or, if it is empty - `.Release.Name`.
+
+### appInstanceStr
+
+The instance of the application: `.Values.app.instance`, or, if it is empty - `.Release.Name`.
+
+### fullComponentNameStr
+
+The full name of the component in a form `appInstanceStr[-componentName]`.
+
+### fullResourceNameStr
+
+The full name of the resource in a form `appInstanceStr[-componentName][-resourceName]`.
+
+If no parameter is provided, the full name of the current resource will be used.
+
+If a parameter is an array with one element, that element will be used as the `resourceName`.
+
+If a parameter is an array with two elements, the first element will be used as the `resourceName`, and the second element will be used as the `componentName`.
+
+### selectorLabelsMap
+
+The set of resource labels used for POD selection.
+
+The parameter is used in the same way as in `fullResourceNameStr`.
+
+### resourceLabelsMap
+
+The full set of resource labels.
+
+The parameter is used in the same way as in `fullResourceNameStr`.
+
+### tplXxx
+
+| Name   | Return type  |
+|--------|--------------|
+| tplStr | string       |
+| tplInt | integer      |
+| tplFlt | float        |
+| tplBln | boolean      |
+| tplMap | object       |
+| tplLst | list         |
+
+Examples:
+
+```yaml
+$replicas: 'tplInt: "{{ .Values.replicaCount }}"'
+$extraLabels:
+   tplName: tplMap
+   tplParam: '{{ .Values.podLabels }}'
+   dstKey: 'labels'
+```
+
+## Examples
 
 See [templates](templates)
