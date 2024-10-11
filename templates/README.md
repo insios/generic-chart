@@ -1,0 +1,1 @@
+# INSIOS/generic-chart/templates
