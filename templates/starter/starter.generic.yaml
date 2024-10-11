@@ -1,0 +1,163 @@
+app:
+  partOf:
+  name:
+  instance:
+  version:
+  environment:
+
+components:
+  main:
+    componentName: ''
+    resources:
+
+####### Deployment
+
+      dep:
+        resourceName: 'dep'
+        manifest:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            $snippets:
+              - snippetName: metadata
+          spec:
+            $replicas:
+              $disabled: '{{ .Values.autoscaling.enabled }}'
+              tplName: tplInt
+              tplParam: '{{ .Values.replicaCount }}'
+            selector:
+              $matchLabels: 'selectorLabelsMap'
+            template:
+              metadata:
+                $annotations: 'tplMap: "{{ .Values.podAnnotations }}"'
+                $labels: 'resourceLabelsMap'
+                $podLabels:
+                  tplName: tplMap
+                  tplParam: '{{ .Values.podLabels }}'
+                  dstKey: 'labels'
+              spec:
+                $imagePullSecrets: 'tplLst: "{{ .Values.imagePullSecrets }}"'
+                serviceAccountName: default
+                $serviceAccountName:
+                  $disabled: '{{ not .Values.serviceAccount.create }}'
+                  tplName: fullResourceNameStr
+                  tplParam: ["sa"]
+                $securityContext: 'tplMap: "{{ .Values.podSecurityContext }}"'
+                containers:
+                  - $name: 'appNameStr'
+                    $securityContext: 'tplMap: "{{ .Values.securityContext }}"'
+                    $image: 'tplStr: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Values.app.version }}"'
+                    $imagePullPolicy: 'tplStr: "{{ .Values.image.pullPolicy }}"'
+                    ports:
+                      - name: http
+                        $containerPort: 'tplInt: "{{ .Values.service.port }}"'
+                        protocol: TCP
+                    $livenessProbe: 'tplMap: "{{ .Values.livenessProbe }}"'
+                    $readinessProbe: 'tplMap: "{{ .Values.readinessProbe }}"'
+                    $resources: 'tplMap: "{{ .Values.resources }}"'
+                    $volumeMounts: 'tplLst: "{{ .Values.volumeMounts }}"'
+                $volumes: 'tplLst: "{{ .Values.volumes }}"'
+                $nodeSelector: 'tplMap: "{{ .Values.nodeSelector }}"'
+                $affinity: 'tplMap: "{{ .Values.affinity }}"'
+                $tolerations: 'tplLst: "{{ .Values.tolerations }}"'
+
+####### Service
+
+      svc:
+        resourceName: 'svc'
+        manifest:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            $snippets:
+              - metadata
+          spec:
+            $type: 'tplStr: "{{ .Values.service.type }}"'
+            ports:
+              - $port: 'tplInt: "{{ .Values.service.port }}"'
+                targetPort: http
+                protocol: TCP
+                name: http
+            $selector: 'selectorLabelsMap: ["dep"]'
+
+####### Ingress
+
+      ing:
+        resourceName: 'ing'
+        $disabled: '{{ not .Values.ingress.enabled }}'
+        manifest:
+          apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            $snippets:
+              - metadata
+            $annotations: 'tplMap: "{{ .Values.ingress.annotations }}"'
+          spec:
+            $ingressClassName: 'tplStr: "{{ .Values.ingress.className }}"'
+            $tls: 'tplLst: "{{ .Values.ingress.tls }}"'
+            rules:
+              - $host: 'tplStr: "{{ (first .Values.ingress.hosts).host }}"'
+                http:
+                  paths:
+                    - $path: 'tplStr: "{{ (first (first .Values.ingress.hosts).paths).path }}"'
+                      $pathType: 'tplStr: "{{ (first (first .Values.ingress.hosts).paths).pathType }}"'
+                      backend:
+                        service:
+                          $name: 'fullResourceNameStr: ["svc"]'
+                          port:
+                            $number: 'tplInt: "{{ .Values.service.port }}"'
+
+####### HorizontalPodAutoscaler
+
+      hpa:
+        resourceName: 'hpa'
+        $disabled: '{{ not .Values.autoscaling.enabled }}'
+        manifest:
+          apiVersion: autoscaling/v2
+          kind: HorizontalPodAutoscaler
+          metadata:
+            $snippets:
+              - metadata
+          spec:
+            scaleTargetRef:
+              apiVersion: apps/v1
+              kind: Deployment
+              $name: 'fullResourceNameStr: ["dep"]'
+            $minReplicas: 'tplInt: "{{ .Values.autoscaling.minReplicas }}"'
+            $maxReplicas: 'tplInt: "{{ .Values.autoscaling.maxReplicas }}"'
+            metrics:
+              - $disabled: '{{ not .Values.autoscaling.targetCPUUtilizationPercentage }}'
+                type: Resource
+                resource:
+                  name: cpu
+                  target:
+                    type: Utilization
+                    $averageUtilization: 'tplInt: "{{ .Values.autoscaling.targetCPUUtilizationPercentage }}"'
+              - $disabled: '{{ not .Values.autoscaling.targetMemoryUtilizationPercentage }}'
+                type: Resource
+                resource:
+                  name: memory
+                  target:
+                    type: Utilization
+                    averageUtilization: 'tplInt: "{{ .Values.autoscaling.targetMemoryUtilizationPercentage }}"'
+
+####### ServiceAccount
+
+      sa:
+        resourceName: 'sa'
+        $disabled: '{{ not .Values.serviceAccount.create }}'
+        manifest:
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            $snippets:
+              - metadata
+            $annotations: 'tplMap: "{{ .Values.serviceAccount.annotations }}"'
+          $automountServiceAccountToken: 'tplBln: "{{ .Values.serviceAccount.automount }}"'
+
+####### snippets
+
+snippets:
+  metadata:
+    $name: 'fullResourceNameStr'
+    $labels: 'resourceLabelsMap'
