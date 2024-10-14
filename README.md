@@ -152,7 +152,6 @@ It can be placed anywhere within the manifest hierarchy. All snippets from this 
 Examples:
 
 ```yaml
-# ...
 components:
   # ...
   - componentName: 'back'
@@ -161,32 +160,93 @@ components:
       - resourceName: ''
         manifest:
           $snippets:
-            - deploymentManifest
+            - manifestCommon
+            - manifestDeployment
           spec:
-            # ...
-          # ...
+            replicas: 2
+            template:
+              spec:
+                containers:
+                  - name: back-api
+                    $snippets:
+                      - containerCommon
+                      - containerBack
+                      - containerHttp
+      - resourceName: 'worker'
+        manifest:
+          $snippets:
+            - manifestCommon
+            - manifestJob
+          spec:
+            template:
+              spec:
+                containers:
+                  - name: back-worker
+                    $snippets:
+                      - containerCommon
+                      - containerBack
+                    command: ['worker']
       # ...
   - componentName: 'front'
     resources:
       # ...
       - resourceName: ''
         manifest:
-          $snippets: ["deploymentManifest"]
+          $snippets:
+            - manifestCommon
+            - manifestDeployment
           spec:
-            # ...
-          # ...
+            replicas: 1
+            template:
+              spec:
+                containers:
+                  - name: front-www
+                    $snippets:
+                      - containerCommon
+                      - containerFront
+                      - containerHttp
       # ...
   # ...
 
 snippets:
   # ...
-  deploymentManifest:
-    apiVersion: apps/v1
-    kind: Deployment
+  manifestCommon:
     metadata:
       $name: 'fullResourceNameStr'
       $labels: 'resourceLabelsMap'
-    spec: {}
+  manifestDeployment:
+    apiVersion: apps/v1
+    kind: Deployment
+    spec:
+      selector:
+        $matchLabels: 'selectorLabelsMap'
+      template:
+        $snippets: ['podTemplateCommon']
+  manifestJob:
+    apiVersion: batch/v1
+    kind: Job
+    spec:
+      template:
+        $snippets: ['podTemplateCommon']
+  # ...
+  podTemplateCommon:
+    metadata:
+      $labels: 'resourceLabelsMap'
+    spec:
+      imagePullSecrets:
+        - name: my-registry-auth
+  # ...
+  containerCommon:
+    imagePullPolicy: IfNotPresent
+  containerHttp:
+    ports:
+      - name: http
+        containerPort: 80
+        protocol: TCP
+  containerBack:
+    $image: 'tplStr: "myrepo/myapp-back:{{ (.Values.back).version }}"'
+  containerFront:
+    $image: 'tplStr: "myrepo/myapp-front:{{ (.Values.front).version }}"'
   # ...
 ```
 
